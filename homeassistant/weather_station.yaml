@@ -1,0 +1,321 @@
+# Home Assistant package: DIY Zigbee weather station (XIAO ESP32-C6, solar, sleepy end device)
+#
+# Install: copy to /config/packages/weather_station.yaml and make sure configuration.yaml has
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Entity IDs below assume the Zigbee2MQTT friendly name "weather_station":
+#   sensor.weather_station_wind_speed / _wind_gust   km/h
+#   sensor.weather_station_wind_direction            ° (0 = north)
+#   sensor.weather_station_rain                      mm since installation
+#   sensor.weather_station_temperature / _humidity / _pressure / _battery
+#   optional: _uv_index, _illuminance, _ground_temperature, _soil_temperature,
+#             _lightning_distance, _lightning_count, _box_temperature
+# This package turns them into clean "weather_*" sensors (device classes, rain today, rain rate,
+# dew point, feels-like, sea-level pressure, Beaufort) that your automations can use, plus alerts.
+# Replace notify.notify with your own notifier (e.g. notify.mobile_app_<phone>).
+
+input_number:
+  weather_station_altitude:
+    name: Weather station - altitude
+    icon: mdi:image-filter-hdr
+    min: -100
+    max: 3000
+    step: 1
+    unit_of_measurement: m
+    mode: box
+    initial: 40
+
+  weather_gust_alert_kmh:
+    name: Weather - strong gust alert
+    icon: mdi:weather-windy
+    min: 30
+    max: 150
+    step: 5
+    unit_of_measurement: km/h
+    initial: 60
+
+  weather_storm_alert_km:
+    name: Weather - lightning alert distance
+    icon: mdi:weather-lightning
+    min: 1
+    max: 40
+    step: 1
+    unit_of_measurement: km
+    initial: 10
+
+template:
+  - sensor:
+      - name: Weather wind speed
+        unique_id: weather_wind_speed
+        default_entity_id: sensor.weather_wind_speed
+        unit_of_measurement: km/h
+        device_class: wind_speed
+        state_class: measurement
+        state: "{{ states('sensor.weather_station_wind_speed') | float(0) | round(1) }}"
+        availability: "{{ has_value('sensor.weather_station_wind_speed') }}"
+
+      - name: Weather wind gust
+        unique_id: weather_wind_gust
+        default_entity_id: sensor.weather_wind_gust
+        unit_of_measurement: km/h
+        device_class: wind_speed
+        state_class: measurement
+        state: "{{ states('sensor.weather_station_wind_gust') | float(0) | round(1) }}"
+        availability: "{{ has_value('sensor.weather_station_wind_gust') }}"
+
+      - name: Weather wind direction
+        unique_id: weather_wind_direction
+        default_entity_id: sensor.weather_wind_direction
+        icon: mdi:compass-outline
+        unit_of_measurement: "°"
+        state: "{{ states('sensor.weather_station_wind_direction') | int(0) }}"
+        availability: "{{ has_value('sensor.weather_station_wind_direction') }}"
+        attributes:
+          cardinal: >-
+            {% set names = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+                            'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'] %}
+            {{ names[((states('sensor.weather_station_wind_direction') | float(0) + 11.25) / 22.5) | int % 16] }}
+
+      - name: Weather Beaufort
+        unique_id: weather_beaufort
+        default_entity_id: sensor.weather_beaufort
+        icon: mdi:windsock
+        state: >-
+          {% set kmh = states('sensor.weather_station_wind_speed') | float(0) %}
+          {% set limits = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118] %}
+          {{ limits | select('le', kmh) | list | count }}
+        availability: "{{ has_value('sensor.weather_station_wind_speed') }}"
+
+      - name: Weather rain total
+        unique_id: weather_rain_total
+        default_entity_id: sensor.weather_rain_total
+        unit_of_measurement: mm
+        device_class: precipitation
+        state_class: total_increasing
+        state: "{{ states('sensor.weather_station_rain') | float(0) | round(2) }}"
+        availability: "{{ has_value('sensor.weather_station_rain') }}"
+
+      - name: Weather dew point
+        unique_id: weather_dew_point
+        default_entity_id: sensor.weather_dew_point
+        unit_of_measurement: °C
+        device_class: temperature
+        state_class: measurement
+        # Magnus formula
+        state: >-
+          {% set t = states('sensor.weather_station_temperature') | float %}
+          {% set rh = [states('sensor.weather_station_humidity') | float, 1] | max %}
+          {% set g = log(rh / 100) + 17.62 * t / (243.12 + t) %}
+          {{ (243.12 * g / (17.62 - g)) | round(1) }}
+        availability: >-
+          {{ has_value('sensor.weather_station_temperature') and has_value('sensor.weather_station_humidity') }}
+
+      - name: Weather feels like
+        unique_id: weather_feels_like
+        default_entity_id: sensor.weather_feels_like
+        unit_of_measurement: °C
+        device_class: temperature
+        state_class: measurement
+        # Wind chill below 10 °C with some wind, heat index above 27 °C, the air temperature otherwise.
+        state: >-
+          {% set t = states('sensor.weather_station_temperature') | float %}
+          {% set v = states('sensor.weather_station_wind_speed') | float(0) %}
+          {% set rh = states('sensor.weather_station_humidity') | float(50) %}
+          {% if t <= 10 and v > 4.8 %}
+            {{ (13.12 + 0.6215 * t - 11.37 * v ** 0.16 + 0.3965 * t * v ** 0.16) | round(1) }}
+          {% elif t >= 27 %}
+            {% set f = t * 9 / 5 + 32 %}
+            {% set hi = -42.379 + 2.04901523 * f + 10.14333127 * rh - 0.22475541 * f * rh
+                        - 0.00683783 * f * f - 0.05481717 * rh * rh + 0.00122874 * f * f * rh
+                        + 0.00085282 * f * rh * rh - 0.00000199 * f * f * rh * rh %}
+            {{ ((hi - 32) * 5 / 9) | round(1) }}
+          {% else %}
+            {{ t | round(1) }}
+          {% endif %}
+        availability: "{{ has_value('sensor.weather_station_temperature') }}"
+
+      - name: Weather sea-level pressure
+        unique_id: weather_sea_level_pressure
+        default_entity_id: sensor.weather_sea_level_pressure
+        unit_of_measurement: hPa
+        device_class: atmospheric_pressure
+        state_class: measurement
+        state: >-
+          {% set p = states('sensor.weather_station_pressure') | float %}
+          {% set t = states('sensor.weather_station_temperature') | float(15) %}
+          {% set h = states('input_number.weather_station_altitude') | float(0) %}
+          {{ (p * (1 - 0.0065 * h / (t + 0.0065 * h + 273.15)) ** -5.257) | round(1) }}
+        availability: "{{ has_value('sensor.weather_station_pressure') }}"
+
+  - binary_sensor:
+      - name: Weather raining
+        unique_id: weather_raining
+        default_entity_id: binary_sensor.weather_raining
+        icon: mdi:weather-pouring
+        device_class: moisture
+        # One bucket tip (0.28 mm) in the last 15 minutes.
+        state: "{{ states('sensor.weather_rain_last_15_min') | float(0) > 0 }}"
+        availability: "{{ has_value('sensor.weather_rain_last_15_min') }}"
+
+      - name: Weather frost
+        unique_id: weather_frost
+        default_entity_id: binary_sensor.weather_frost
+        icon: mdi:snowflake-alert
+        device_class: cold
+        # Grass-level probe when fitted, otherwise air temperature at 1.5 m with a margin.
+        state: >-
+          {% if has_value('sensor.weather_station_ground_temperature') %}
+            {{ states('sensor.weather_station_ground_temperature') | float(10) <= 0 }}
+          {% else %}
+            {{ states('sensor.weather_station_temperature') | float(10) <= 2 }}
+          {% endif %}
+        availability: >-
+          {{ has_value('sensor.weather_station_ground_temperature') or has_value('sensor.weather_station_temperature') }}
+
+      - name: Weather station silent
+        unique_id: weather_station_silent
+        default_entity_id: binary_sensor.weather_station_silent
+        device_class: problem
+        # The station reports every 5 minutes; Zigbee2MQTT only marks battery devices offline after hours.
+        state: >-
+          {% set s = states.sensor.weather_station_rain %}
+          {{ s is none or now() - s.last_reported > timedelta(minutes=30) }}
+
+sensor:
+  - platform: statistics
+    name: Weather rain last 15 min
+    unique_id: weather_rain_last_15_min
+    entity_id: sensor.weather_rain_total
+    state_characteristic: change
+    max_age:
+      minutes: 15
+
+  - platform: statistics
+    name: Weather rain last 24 h
+    unique_id: weather_rain_last_24h
+    entity_id: sensor.weather_rain_total
+    state_characteristic: change
+    max_age:
+      hours: 24
+
+  - platform: derivative
+    name: Weather rain rate
+    unique_id: weather_rain_rate
+    source: sensor.weather_rain_total
+    unit_time: h
+    unit: mm/h
+    round: 1
+    time_window:
+      minutes: 15
+
+utility_meter:
+  weather_rain_today:
+    name: Weather rain today
+    unique_id: weather_rain_today
+    source: sensor.weather_rain_total
+    cycle: daily
+  weather_rain_this_month:
+    name: Weather rain this month
+    unique_id: weather_rain_this_month
+    source: sensor.weather_rain_total
+    cycle: monthly
+  weather_rain_this_year:
+    name: Weather rain this year
+    unique_id: weather_rain_this_year
+    source: sensor.weather_rain_total
+    cycle: yearly
+
+automation:
+  - id: weather_strong_gust
+    alias: Weather - strong gust
+    mode: single
+    triggers:
+      - trigger: template
+        value_template: >-
+          {{ states('sensor.weather_station_wind_gust') | float(0)
+             >= states('input_number.weather_gust_alert_kmh') | float(60) }}
+    actions:
+      - action: notify.notify
+        data:
+          title: "Weather station"
+          message: >-
+            Gust of {{ states('sensor.weather_station_wind_gust') }} km/h
+            from {{ state_attr('sensor.weather_wind_direction', 'cardinal') }}.
+            Bring in the garden furniture and the umbrella.
+      - delay:
+          hours: 1
+
+  - id: weather_storm_nearby
+    alias: Weather - lightning nearby
+    mode: single
+    # Only with the optional AS3935: a new strike closer than the alert distance.
+    triggers:
+      - trigger: state
+        entity_id: sensor.weather_station_lightning_count
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none
+             and trigger.to_state.state | int(0) > trigger.from_state.state | int(0)
+             and states('sensor.weather_station_lightning_distance') | int(99)
+                 <= states('input_number.weather_storm_alert_km') | int(10) }}
+    actions:
+      - action: notify.notify
+        data:
+          title: "Weather station"
+          message: >-
+            Lightning about {{ states('sensor.weather_station_lightning_distance') }} km away.
+      - delay:
+          minutes: 30
+
+  - id: weather_frost_tonight
+    alias: Weather - frost
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.weather_frost
+        to: "on"
+        for:
+          minutes: 10
+    actions:
+      - action: notify.notify
+        data:
+          title: "Weather station"
+          message: >-
+            Frost in the garden
+            ({{ states('sensor.weather_station_ground_temperature')
+                if has_value('sensor.weather_station_ground_temperature')
+                else states('sensor.weather_station_temperature') }} °C).
+
+  - id: weather_station_silent
+    alias: Weather - station silent
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.weather_station_silent
+        to: "on"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Weather station"
+          message: >-
+            The weather station has not reported for 30 minutes.
+            Check its battery ({{ states('sensor.weather_station_battery') }} %) and the Zigbee range.
+
+  - id: weather_station_low_battery
+    alias: Weather - station battery low
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.weather_station_battery
+        below: 20
+        for:
+          hours: 2
+    actions:
+      - action: notify.notify
+        data:
+          title: "Weather station"
+          message: >-
+            The weather station battery is at {{ states('sensor.weather_station_battery') }} %.
+            The solar panel may be dirty or shaded.
