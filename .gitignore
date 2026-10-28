@@ -1,0 +1,7 @@
+.pio/
+node_modules/
+.DS_Store
+site/firmware/
+hardware/3d/stl/
+.claude/
+firmware/local.ini
