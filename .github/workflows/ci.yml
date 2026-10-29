@@ -71,6 +71,9 @@ jobs:
           arduino-cli core install esp32:esp32@3.3.12 --additional-urls "$ESP32_INDEX"
           arduino-cli lib install "Adafruit BME280 Library" "Adafruit SHT4x Library" "Adafruit LTR390 Library" \
             "OneWire" "DallasTemperature" "SparkFun AS3935 Lightning Detector Arduino Library"
+          # OneWire 2.3.8 doesn't build on the ESP32-C6 with core 3.x: replace it with master.
+          ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL=true arduino-cli lib install \
+            --git-url "https://github.com/PaulStoffregen/OneWire.git#800f26f3ee6eb446a72e013785cac3700e54cc13"
       - name: Compile
         run: arduino-cli compile --fqbn "$FQBN" --warnings all firmware/weather_station
 

@@ -22,6 +22,7 @@ Cancella solo al primo flash (cancella anche il totale di pioggia salvato). Aggi
 
 1. Installa il core **esp32** di Espressif, 3.3.0 o successivo (gestore schede).
 2. Installa queste librerie (gestore librerie), anche per i moduli che non monti, perché lo sketch le include: **Adafruit BME280 Library**, **Adafruit SHT4x Library**, **Adafruit LTR390 Library**, **OneWire**, **DallasTemperature**, **SparkFun AS3935 Lightning Detector Arduino Library**.
+   OneWire 2.3.8 del gestore librerie non compila per l'ESP32-C6: sostituiscila con la versione attuale da GitHub ([scarica lo zip](https://github.com/PaulStoffregen/OneWire/archive/refs/heads/master.zip), poi *Sketch → #include libreria → Aggiungi libreria da file .ZIP*).
 3. Apri `firmware/weather_station/weather_station.ino` e imposta il menu **Strumenti**:
 
 | Impostazione | Valore |

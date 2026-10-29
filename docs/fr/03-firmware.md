@@ -22,6 +22,7 @@ N'effacez qu'au premier flash (cela efface aussi le cumul de pluie enregistré).
 
 1. Installez le core **esp32** d'Espressif, 3.3.0 ou plus récent (gestionnaire de cartes).
 2. Installez ces bibliothèques (gestionnaire de bibliothèques), même pour les modules que vous ne montez pas, car le sketch les inclut : **Adafruit BME280 Library**, **Adafruit SHT4x Library**, **Adafruit LTR390 Library**, **OneWire**, **DallasTemperature**, **SparkFun AS3935 Lightning Detector Arduino Library**.
+   OneWire 2.3.8 du gestionnaire de bibliothèques ne compile pas pour l'ESP32-C6 : remplacez-la par la version actuelle de GitHub ([téléchargez le zip](https://github.com/PaulStoffregen/OneWire/archive/refs/heads/master.zip), puis *Croquis → Inclure une bibliothèque → Ajouter la bibliothèque .ZIP*).
 3. Ouvrez `firmware/weather_station/weather_station.ino` et réglez le menu **Outils** :
 
 | Réglage | Valeur |
