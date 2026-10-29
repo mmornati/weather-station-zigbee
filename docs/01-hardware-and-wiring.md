@@ -1,5 +1,7 @@
 # 01 · Hardware & wiring
 
+🌐 **English** · [Français](fr/01-hardware-and-wiring.md) · [Italiano](it/01-hardware-and-wiring.md)
+
 ## Parts
 
 | Part | Role | Notes |
@@ -16,7 +18,7 @@
 | 10 kΩ, 2 × 100 kΩ, 10 nF, 100 nF | Vane divider, reed pull-ups, filters | |
 | 2 × RJ11 6P4C PCB jacks | Plug in the kit's cables | |
 | 4 × PG7 cable glands, 1 × M12 ePTFE vent plug, 2 mm silicone cord | Seal the box, let it breathe | |
-| Pole Ø 32–40 mm, 2–3 m, stainless worm-drive hose clamps, M4/M5 hardware | Mounting | |
+| Pole Ø 32–40 mm, 2–3 m, 8 stainless worm-drive hose clamps, M4/M5 hardware, heat-set inserts | Mounting | M4 × 12 and M4 × 20 + nyloc nuts, 3 × M5 threaded rod, M3/M4/M5 inserts. Plus a short post for the rain gauge |
 | *Optional:* LTR390 breakout (I2C, 0x53) + 25 mm PTFE disc, 1 mm | UV index + light | Under the shield's cap |
 | *Optional:* 2 × waterproof DS18B20 probe + 2 × 4.7 kΩ | Grass-level (frost) and soil temperature | One probe per pin, no address juggling |
 | *Optional:* AS3935 breakout (I2C, 0x03) | Lightning, up to ~40 km | Keep it away from the XIAO and the charger |

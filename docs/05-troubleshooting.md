@@ -1,5 +1,7 @@
 # 05 · Troubleshooting
 
+🌐 **English** · [Français](fr/05-troubleshooting.md) · [Italiano](it/05-troubleshooting.md)
+
 Start with the serial monitor right after a press on **RESET**: during the first 2 minutes the station logs the modules it found, the join and each report. After that it is in deep sleep and USB disappears.
 
 ## The LED blinks for 3 minutes, then stops
@@ -44,3 +46,9 @@ The station did not find a network.
 ## Optional module not found
 
 Modules are detected at power-on only: press RESET after connecting one. Check its address: SHT45 0x44, BME280 0x76/0x77, LTR390 0x53, AS3935 0x03 (both address pins high).
+
+## The printed parts don't fit
+
+- The saddle doesn't sit flat: your pole isn't the `pole_d` in [`common.scad`](../hardware/3d/common.scad). Change it and print again.
+- The inserts go in too easily or not at all: set `m4_insert_d` in `common.scad` to suit your inserts.
+- The panel doesn't snap into the frame: put its real size in `panel` in [`panel_bracket.scad`](../hardware/3d/panel_bracket.scad).

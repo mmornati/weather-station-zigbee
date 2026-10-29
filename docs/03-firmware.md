@@ -1,8 +1,14 @@
 # 03 · Firmware
 
+🌐 **English** · [Français](fr/03-firmware.md) · [Italiano](it/03-firmware.md)
+
 ## Build and flash
 
-### PlatformIO (recommended)
+### From your browser (easiest)
+
+Open the [website's flash section](https://mmornati.github.io/weather-station-zigbee/#flash) in Chrome or Edge on a computer, plug the XIAO in with USB-C (battery disconnected) and click **Connect & install**. Choose **Erase device** on the first install only. The page always carries the firmware built from the latest `main`.
+
+### PlatformIO
 
 ```bash
 cd firmware

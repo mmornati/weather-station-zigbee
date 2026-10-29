@@ -114,6 +114,16 @@ jobs:
           path: hardware/3d/stl/*.stl
           retention-days: 14
 
+  website:
+    name: Website translations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node --test "site/test/*.test.mjs"
+
   docs:
     name: Docs links
     runs-on: ubuntu-latest
@@ -122,5 +132,5 @@ jobs:
       - name: Check local links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --offline --no-progress --include-fragments --exclude-path node_modules --exclude-path .pio '**/*.md'
+          args: --offline --no-progress --include-fragments --exclude-path node_modules --exclude-path .pio --exclude '/site/stl/' '**/*.md' 'site/**/*.html'
           fail: true
