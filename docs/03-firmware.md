@@ -1,8 +1,14 @@
 # 03 · Firmware
 
+🌐 **English** · [Français](fr/03-firmware.md) · [Italiano](it/03-firmware.md)
+
 ## Build and flash
 
-### PlatformIO (recommended)
+### From your browser (easiest)
+
+Open the [website's flash section](https://mmornati.github.io/weather-station-zigbee/#flash) in Chrome or Edge on a computer, plug the XIAO in with USB-C (battery disconnected) and click **Connect & install**. Choose **Erase device** on the first install only. The page always carries the firmware built from the latest `main`.
+
+### PlatformIO
 
 ```bash
 cd firmware
@@ -16,6 +22,7 @@ Erase only on the first flash (it also wipes the stored rain total). Later updat
 
 1. Install the **esp32** core by Espressif, 3.3.0 or newer (Boards Manager).
 2. Install these libraries (Library Manager), even for modules you don't fit, because the sketch includes them: **Adafruit BME280 Library**, **Adafruit SHT4x Library**, **Adafruit LTR390 Library**, **OneWire**, **DallasTemperature**, **SparkFun AS3935 Lightning Detector Arduino Library**.
+   OneWire 2.3.8 from the Library Manager doesn't compile for the ESP32-C6: replace it with the current version from GitHub ([download the zip](https://github.com/PaulStoffregen/OneWire/archive/refs/heads/master.zip), then *Sketch → Include Library → Add .ZIP Library*).
 3. Open `firmware/weather_station/weather_station.ino` and set the **Tools** menu:
 
 | Setting | Value |

@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weather Station Zigbee</title>
+  <meta name="description" content="Build your own solar Zigbee weather station: wind, rain, temperature, humidity, pressure, UV, lightning and frost. Seeed XIAO ESP32-C6, a Misol kit and 3D-printed parts, ready for Zigbee2MQTT and Home Assistant.">
+  <meta property="og:title" content="Weather Station Zigbee: your own weather">
+  <meta property="og:description" content="DIY solar Zigbee weather station on the XIAO ESP32-C6. Step-by-step build guide, 3D-printed parts, browser flasher. Zigbee2MQTT + Home Assistant ready.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="img/head.png">
+  <meta name="theme-color" content="#0a0e1a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0e1a'/%3E%3Ccircle cx='13' cy='13' r='5' fill='%23ffb547'/%3E%3Cpath d='M10 25h13a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4 1.6A3.8 3.8 0 0 0 10 25z' fill='%2394a3b8'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module" integrity="sha384-f+fR3K1mnKB2tVps4hdEh+qJvLgH2bKw81Yn+eNE3+gE8YpqocjkxQON4k19I3e/" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --bg-2: #0f1526;
+      --surface: #141b2f;
+      --surface-2: #1a2340;
+      --line: #25304f;
+      --text: #e8ecf6;
+      --muted: #9aa6c2;
+      --faint: #8892b0;
+      --amber: #ffb547;
+      --amber-2: #ff8a3d;
+      --mint: #3ee6a8;
+      --rose: #ff6b81;
+      --radius: 18px;
+      --maxw: 1160px;
+      --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --display: "Bricolage Grotesque", var(--font);
+      --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 var(--font);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: var(--amber); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: var(--mono); }
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 16px; }
+    @media (min-width: 720px) { .wrap { padding: 0 32px; } }
+
+    /* ---------- Nav ---------- */
+    nav.top {
+      position: sticky; top: 0; z-index: 20;
+      backdrop-filter: blur(14px);
+      background: color-mix(in srgb, var(--bg) 78%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    }
+    nav.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; font: 600 17px var(--display); color: var(--text); }
+    .brand:hover { text-decoration: none; }
+    .brand-mark { width: 28px; height: 28px; }
+    nav.top ul { display: none; list-style: none; gap: 28px; margin: 0; padding: 0; }
+    nav.top ul a { color: var(--muted); font-size: 14px; font-weight: 500; }
+    nav.top ul a:hover { color: var(--text); text-decoration: none; }
+    @media (min-width: 900px) { nav.top ul { display: flex; } }
+    .nav-end { display: flex; align-items: center; gap: 10px; }
+    .lang { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+    .lang button {
+      font: 600 12px var(--mono); letter-spacing: .04em; color: var(--muted);
+      background: none; border: 0; border-radius: 7px; padding: 5px 9px; cursor: pointer;
+    }
+    .lang button:hover { color: var(--text); }
+    .lang button[aria-pressed="true"] { background: var(--amber); color: #1b1204; }
+    .lang button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+    @media (max-width: 520px) { .gh-label { display: none; } .brand { font-size: 15px; } }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 13px 22px; border-radius: 12px;
+      font: 600 15px var(--font); cursor: pointer; border: 1px solid transparent;
+      transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .btn:hover { text-decoration: none; transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--amber), var(--amber-2));
+      color: #1b1204;
+      box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .7);
+    }
+    .btn-primary:hover { box-shadow: 0 12px 26px -10px rgba(0, 0, 0, .8); }
+    .btn-ghost { background: var(--surface); color: var(--text); border-color: var(--line); }
+    .btn-ghost:hover { background: var(--surface-2); }
+    .btn-sm { padding: 8px 14px; font-size: 14px; border-radius: 10px; }
+
+    /* ---------- Hero ---------- */
+    header.hero { position: relative; padding: 72px 0 56px; }
+    header.hero::before {
+      content: ""; position: absolute; inset: -200px 0 auto 0; height: 760px; z-index: -1;
+      background:
+        radial-gradient(600px 380px at 78% 30%, rgba(255, 181, 71, .16), transparent 70%),
+        radial-gradient(520px 360px at 12% 10%, rgba(62, 230, 168, .10), transparent 70%);
+    }
+    header.hero::after {
+      content: ""; position: absolute; inset: 0; z-index: -1; opacity: .35;
+      background-image: radial-gradient(var(--line) 1px, transparent 1px);
+      background-size: 26px 26px;
+      mask-image: linear-gradient(to bottom, black, transparent 85%);
+    }
+    .hero-grid { display: grid; gap: 48px; align-items: center; }
+    .hero-grid > *, .station > *, .garage > * { min-width: 0; }
+    @media (min-width: 980px) { .hero-grid { grid-template-columns: 1.05fr 1fr; gap: 56px; } }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--line);
+      color: var(--muted); font-size: 13px; font-weight: 500;
+    }
+    .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+    h1 {
+      font: 700 clamp(44px, 7vw, 76px)/1.02 var(--display);
+      letter-spacing: -0.015em; margin: 22px 0 18px;
+    }
+    h1 .grad { color: var(--amber); }
+    .lede { font-size: clamp(17px, 2vw, 20px); color: var(--muted); max-width: 560px; margin: 0 0 32px; }
+    .lede strong { color: var(--text); font-weight: 600; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 30px; }
+    .chip {
+      font: 500 12.5px var(--mono); color: var(--muted);
+      padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2);
+    }
+
+    /* Demo card: live readings */
+    .demo {
+      position: relative; border-radius: 24px; padding: 22px;
+      background: linear-gradient(180deg, var(--surface), var(--bg-2));
+      border: 1px solid var(--line);
+      box-shadow: 0 40px 80px -40px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .demo-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; }
+    .demo-title { font: 600 14px var(--display); color: var(--muted); letter-spacing: .02em; }
+    .state-pill {
+      display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+      font: 600 13px var(--font); padding: 6px 12px; border-radius: 999px;
+      background: rgba(62, 230, 168, .12); color: var(--mint);
+    }
+    .state-pill .led { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .demo.sending .state-pill { background: rgba(255, 181, 71, .14); color: var(--amber); }
+    .readings { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center; }
+    @media (max-width: 460px) { .readings { grid-template-columns: 1fr; justify-items: center; } }
+    .compass { width: 150px; height: 150px; display: block; }
+    .compass .needle { transition: transform 1.4s cubic-bezier(.4, 0, .2, 1); transform-origin: 75px 75px; }
+    .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
+    .tile { padding: 10px 12px; border-radius: 12px; background: #0c1122; border: 1px solid var(--line); }
+    .tile .l { display: block; font: 500 11.5px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+    .tile .v { font: 600 22px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+    .tile .u { font: 500 12px var(--mono); color: var(--muted); margin-left: 3px; }
+    .payload {
+      margin-top: 14px; padding: 14px 16px; border-radius: 12px;
+      background: #070a14; border: 1px solid var(--line);
+      font: 13px/1.6 var(--mono); color: var(--muted); overflow-x: auto; white-space: nowrap;
+    }
+    .payload .k { color: #8ab4ff; } .payload .n { color: var(--mint); } .payload .c { color: var(--faint); }
+    .demo-hint { margin-top: 10px; font-size: 12.5px; color: var(--faint); text-align: center; }
+
+    /* Station renders */
+    .station { display: grid; gap: 28px; }
+    @media (min-width: 980px) { .station { grid-template-columns: 1fr 1fr; align-items: start; } }
+    .render { margin: 0; border-radius: var(--radius); overflow: hidden; background: #0f1526; border: 1px solid var(--line); }
+    .render img { display: block; width: 100%; height: auto; }
+    .render figcaption { padding: 12px 16px; font-size: 13.5px; color: var(--faint); border-top: 1px solid var(--line); }
+    .renders { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+    .heights { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .heights li { display: grid; grid-template-columns: 78px 1fr; gap: 14px; align-items: baseline; padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+    .heights b { font: 600 15px var(--mono); color: var(--amber); }
+    .heights strong { display: block; }
+    .heights span { color: var(--muted); font-size: 14.5px; }
+
+    /* Measures */
+    .measures { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 760px) { .measures { grid-template-columns: repeat(4, 1fr); } }
+    .measure { position: relative; border-radius: var(--radius); padding: 20px 18px; background: var(--surface); border: 1px solid var(--line); }
+    .measure .emoji { font-size: 26px; line-height: 1; margin-bottom: 12px; display: block; }
+    .measure p { color: var(--muted); font-size: 14px; margin: 0; }
+    .measure .tag { position: absolute; top: 14px; right: 14px; font: 600 10.5px var(--mono); color: var(--mint); border: 1px solid rgba(62,230,168,.35); padding: 2px 7px; border-radius: 6px; }
+
+    /* Build steps */
+    ol.build { list-style: none; counter-reset: b; margin: 0; padding: 0; display: grid; gap: 16px; }
+    @media (min-width: 900px) { ol.build { grid-template-columns: 1fr 1fr; } }
+    ol.build > li {
+      counter-increment: b; position: relative; padding: 22px 22px 22px 76px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    }
+    ol.build > li::before {
+      content: counter(b); position: absolute; left: 20px; top: 20px;
+      width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+      font: 700 17px var(--mono); color: var(--amber); background: rgba(255,181,71,.1); border: 1px solid rgba(255,181,71,.3);
+    }
+    @media (max-width: 520px) { ol.build > li { padding: 70px 18px 20px; } }
+    ol.build h3 { margin-bottom: 6px; }
+    ol.build p { color: var(--muted); margin: 0 0 12px; font-size: 15px; }
+    ol.build code, .part code, .heights code { font-size: 13px; color: var(--text); background: var(--bg-2); padding: 1px 6px; border-radius: 5px; }
+    .links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .links a { font: 500 12.5px var(--mono); padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2); color: var(--muted); }
+    .links a:hover { color: var(--text); text-decoration: none; border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+    .note { margin-top: 28px; padding: 16px 18px; border-radius: 14px; border: 1px solid rgba(255,181,71,.35); background: rgba(255,181,71,.06); color: var(--muted); font-size: 15px; }
+    .note strong { color: var(--text); }
+
+    /* Printed parts */
+    .parts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .part { display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px solid var(--line); }
+    .part img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #0f1526; padding: 10px; }
+    .part div { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .part strong { font: 600 16px var(--display); }
+    .part .qty { font: 600 12px var(--mono); color: var(--amber); }
+    .part span.s { color: var(--muted); font-size: 13.5px; flex: 1; }
+    .part .links { margin-top: 8px; }
+    .print-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
+
+    /* ---------- Sections ---------- */
+    section { padding: 88px 0; }
+    section.alt { background: linear-gradient(180deg, var(--bg-2), var(--bg)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .kicker { font: 600 13px var(--mono); color: var(--amber); letter-spacing: .08em; text-transform: uppercase; }
+    h2 { font: 700 clamp(30px, 4.2vw, 46px)/1.1 var(--display); letter-spacing: -0.03em; margin: 12px 0 16px; }
+    .sub { color: var(--muted); font-size: 18px; max-width: 680px; margin: 0 0 48px; }
+    h3 { font: 600 19px/1.3 var(--display); margin: 0 0 8px; letter-spacing: -0.01em; }
+
+    .features { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 640px) { .features { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1000px) { .features { grid-template-columns: repeat(4, 1fr); } }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 24px; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); transform: translateY(-2px); }
+    .card p { color: var(--muted); margin: 0; font-size: 15px; }
+    .card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .card-head h3 { margin: 0; }
+    .icon { flex: none; display: inline-flex; color: var(--amber); }
+    .icon svg { width: 24px; height: 24px; }
+
+    .uses { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 760px) { .uses { grid-template-columns: repeat(4, 1fr); } }
+    .use {
+      position: relative; border-radius: var(--radius); padding: 22px 20px;
+      background: var(--surface); border: 1px solid var(--line); overflow: hidden;
+    }
+    .use .emoji { font-size: 30px; line-height: 1; margin-bottom: 14px; display: block; }
+    .use p { color: var(--muted); font-size: 14px; margin: 0; }
+    .use.featured { grid-column: span 2; background: linear-gradient(135deg, rgba(255,181,71,.14), rgba(255,138,61,.04)), var(--surface); border-color: rgba(255,181,71,.35); }
+    .use .tag { position: absolute; top: 16px; right: 16px; font: 600 11px var(--mono); color: #1b1204; background: var(--amber); padding: 3px 8px; border-radius: 6px; }
+
+    /* Flow */
+    .flow { display: grid; gap: 12px; grid-template-columns: 1fr; counter-reset: step; }
+    @media (min-width: 900px) { .flow { grid-template-columns: repeat(5, 1fr); gap: 0; } }
+    .node {
+      position: relative; padding: 22px 18px; border-radius: var(--radius);
+      background: var(--surface); border: 1px solid var(--line); text-align: center;
+    }
+    @media (min-width: 900px) {
+      .node { margin: 0 10px; }
+      .node:not(:last-child)::after {
+        content: ""; position: absolute; top: 50%; right: -21px; width: 22px; height: 2px;
+        background: linear-gradient(90deg, var(--amber), transparent);
+      }
+    }
+    .node .big { font-size: 26px; display: block; margin-bottom: 8px; }
+    .node strong { display: block; font: 600 15px var(--display); }
+    .node span.s { color: var(--faint); font-size: 13px; }
+
+    /* Flash */
+    .flash-grid { display: grid; gap: 28px; }
+    @media (min-width: 980px) { .flash-grid { grid-template-columns: 1fr 1fr; align-items: start; } }
+    .flash-card {
+      border-radius: 24px; padding: 32px;
+      background: radial-gradient(400px 220px at 80% 0%, rgba(255,181,71,.18), transparent 70%), var(--surface);
+      border: 1px solid rgba(255,181,71,.3);
+    }
+    .flash-card h3 { font-size: 24px; }
+    .flash-card p { color: var(--muted); }
+    .version { font: 500 13px var(--mono); color: var(--faint); margin-top: 16px; }
+    esp-web-install-button { display: inline-block; margin-top: 8px; }
+    .unsupported { color: var(--rose); font-size: 14px; }
+    ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 14px; }
+    ol.steps li {
+      counter-increment: s; position: relative; padding: 18px 18px 18px 64px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 14px; color: var(--muted);
+    }
+    ol.steps li strong { color: var(--text); display: block; font-weight: 600; margin-bottom: 2px; }
+    ol.steps li::before {
+      content: counter(s); position: absolute; left: 18px; top: 18px;
+      width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+      font: 600 14px var(--mono); color: var(--amber); background: rgba(255,181,71,.1); border: 1px solid rgba(255,181,71,.3);
+    }
+    ol.steps code { font-size: 13px; color: var(--text); background: var(--bg-2); padding: 1px 6px; border-radius: 5px; }
+
+    /* Code */
+    .code {
+      position: relative; border-radius: 16px; background: #070a14; border: 1px solid var(--line); overflow: hidden;
+    }
+    .code-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .code-bar span { font: 500 12.5px var(--mono); color: var(--faint); }
+    .copy { font: 500 12px var(--mono); color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+    .copy:hover { color: var(--text); }
+    .code pre { margin: 0; padding: 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.65; color: #cdd6f4; }
+    .tk-k { color: #cba6f7; } .tk-s { color: #a6e3a1; } .tk-c { color: #6c7086; font-style: italic; } .tk-p { color: #89b4fa; }
+
+    /* Garage */
+    .garage { display: grid; gap: 28px; }
+    @media (min-width: 980px) { .garage { grid-template-columns: 1fr 1fr; align-items: center; } }
+    .checks { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+    .checks li { display: flex; gap: 14px; padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+    .checks li .ic { flex: none; font-size: 20px; line-height: 1.3; }
+    .checks li strong { display: block; }
+    .checks li span { color: var(--muted); font-size: 14.5px; }
+    .notif {
+      max-width: 380px; margin: 0 auto; padding: 16px 18px; border-radius: 20px;
+      background: rgba(30, 38, 64, .85); border: 1px solid var(--line); backdrop-filter: blur(10px);
+      box-shadow: 0 30px 60px -30px rgba(0,0,0,.9);
+    }
+    .notif + .notif { margin-top: 12px; opacity: .75; transform: scale(.96); }
+    .notif-head { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--faint); margin-bottom: 6px; }
+    .notif-head b { color: var(--muted); font-weight: 600; }
+    .notif strong { display: block; font-size: 15px; }
+    .notif p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+    /* BOM */
+    .bom { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    .bom th, .bom td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 15px; }
+    .bom th { font: 600 12.5px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; background: var(--bg-2); }
+    .bom td { color: var(--muted); }
+    .bom td:first-child { color: var(--text); font-weight: 500; }
+    .bom tr:last-child td { border-bottom: 0; }
+    .bom-wrap { overflow-x: auto; }
+
+    /* FAQ */
+    .faq { display: grid; gap: 12px; max-width: 860px; }
+    details { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0 20px; }
+    details[open] { border-color: color-mix(in srgb, var(--amber) 35%, var(--line)); }
+    summary { cursor: pointer; list-style: none; padding: 18px 0; font: 600 17px var(--display); display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--amber); font: 500 22px var(--mono); line-height: 1; }
+    details[open] summary::after { content: "–"; }
+    details p, details ul { color: var(--muted); margin: 0 0 18px; }
+    details ul { padding-left: 20px; }
+
+    /* Docs + footer */
+    .docs { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .docs { grid-template-columns: repeat(3, 1fr); } }
+    .doc { display: block; padding: 20px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--text); }
+    .doc:hover { text-decoration: none; border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+    .doc .n { font: 600 12px var(--mono); color: var(--amber); }
+    .doc strong { display: block; font: 600 16px var(--display); margin: 4px 0; }
+    .doc span { color: var(--muted); font-size: 14px; }
+    .final { text-align: center; padding: 100px 0; }
+    .final h2 { margin-bottom: 14px; }
+    .final .cta { justify-content: center; }
+    footer { border-top: 1px solid var(--line); padding: 32px 0; color: var(--faint); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
+
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="brand" href="#">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#141b2f" stroke="#25304f"/><circle cx="13" cy="13" r="5" fill="#ffb547"/><path d="M10 25h13a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4 1.6A3.8 3.8 0 0 0 10 25z" fill="#9aa6c2"/></svg>
+      Weather Station Zigbee
+    </a>
+    <ul>
+      <li><a href="#why" data-i18n="nav.why">Why</a></li>
+      <li><a href="#station" data-i18n="nav.station">The station</a></li>
+      <li><a href="#build" data-i18n="nav.build">Build</a></li>
+      <li><a href="#parts" data-i18n="nav.parts">3D parts</a></li>
+      <li><a href="#flash" data-i18n="nav.flash">Flash</a></li>
+      <li><a href="#faq" data-i18n="nav.faq">FAQ</a></li>
+    </ul>
+    <div class="nav-end">
+      <div class="lang" role="group" aria-label="Language" data-i18n-attr="aria-label:nav.language">
+        <button type="button" data-lang="en" lang="en" title="English">EN</button>
+        <button type="button" data-lang="fr" lang="fr" title="Français">FR</button>
+        <button type="button" data-lang="it" lang="it" title="Italiano">IT</button>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="https://github.com/mmornati/weather-station-zigbee" aria-label="GitHub">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="gh-label">GitHub</span>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot"></span><span data-i18n="hero.eyebrow">Open source · Solar · Zigbee 3.0 · No cloud</span></span>
+      <h1 data-i18n="hero.title">Your own <span class="grad">weather.</span></h1>
+      <p class="lede" data-i18n="hero.lede">A <strong>solar Zigbee weather station</strong> you build yourself: wind, gusts, direction, rain, temperature, humidity and pressure, plus optional <strong>UV, lightning and frost</strong> sensors. A Seeed XIAO ESP32-C6, a Misol wind and rain kit and a set of <strong>3D-printed parts</strong>, ready for <strong>Zigbee2MQTT</strong> and <strong>Home Assistant</strong>.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#build">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          <span data-i18n="hero.ctaBuild">Start building</span>
+        </a>
+        <a class="btn btn-ghost" href="#flash" data-i18n="hero.ctaFlash">Flash from your browser</a>
+      </div>
+      <div class="chips">
+        <span class="chip">ESP32-C6</span><span class="chip">Sleepy end device</span><span class="chip">18650 + solar</span><span class="chip">OpenSCAD</span><span class="chip">Zigbee2MQTT</span><span class="chip">Home Assistant</span><span class="chip">MIT</span>
+      </div>
+    </div>
+
+    <div class="demo" id="demo">
+      <div class="demo-head">
+        <span class="demo-title" data-i18n="demo.title">LIVE DEMO · your garden</span>
+        <span class="state-pill"><span class="led"></span><span id="state-text">Asleep</span></span>
+      </div>
+      <div class="readings">
+        <svg class="compass" viewBox="0 0 150 150" role="img" aria-label="Wind direction compass" data-i18n-attr="aria-label:demo.compassLabel">
+          <circle cx="75" cy="75" r="70" fill="#0c1122" stroke="#25304f" stroke-width="2"/>
+          <circle cx="75" cy="75" r="54" fill="none" stroke="#25304f" stroke-dasharray="2 6"/>
+          <g font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" text-anchor="middle" fill="#9aa6c2">
+            <text x="75" y="22" fill="#ffb547">N</text><text x="132" y="79">E</text><text x="75" y="137">S</text><text x="18" y="79">W</text>
+          </g>
+          <g class="needle" id="needle">
+            <path d="M75 30 L83 78 L75 72 L67 78 Z" fill="#ffb547"/>
+            <path d="M75 120 L81 80 L75 84 L69 80 Z" fill="#33406a"/>
+          </g>
+          <circle cx="75" cy="75" r="5" fill="#e8ecf6"/>
+        </svg>
+        <div class="tiles">
+          <div class="tile"><span class="l" data-i18n="demo.wind">Wind</span><span class="v" id="v-wind">12</span><span class="u">km/h</span></div>
+          <div class="tile"><span class="l" data-i18n="demo.gust">Gust</span><span class="v" id="v-gust">21</span><span class="u">km/h</span></div>
+          <div class="tile"><span class="l" data-i18n="demo.temp">Temperature</span><span class="v" id="v-temp">11.4</span><span class="u">°C</span></div>
+          <div class="tile"><span class="l" data-i18n="demo.rain">Rain today</span><span class="v" id="v-rain">2.8</span><span class="u">mm</span></div>
+        </div>
+      </div>
+      <div class="payload" aria-live="polite"><span class="c">// zigbee2mqtt/weather_station</span><br>{ <span class="k">"wind_speed"</span>: <span class="n" id="p-wind">12</span>, <span class="k">"wind_gust"</span>: <span class="n" id="p-gust">21</span>, <span class="k">"wind_direction"</span>: <span class="n" id="p-dir">248</span>,<br>&nbsp;&nbsp;<span class="k">"temperature"</span>: <span class="n" id="p-temp">11.4</span>, <span class="k">"humidity"</span>: <span class="n" id="p-hum">87</span>, <span class="k">"pressure"</span>: <span class="n" id="p-pres">1004.2</span>, <span class="k">"rain"</span>: <span class="n" id="p-rain">412.6</span> }</div>
+      <div class="demo-hint" data-i18n="demo.hint">Simulated: the real station wakes every minute and reports every 5 minutes.</div>
+    </div>
+  </div>
+</header>
+
+<section id="why">
+  <div class="wrap">
+    <span class="kicker" data-i18n="why.kicker">Why build it</span>
+    <h2 data-i18n="why.title">A real weather station, without the cloud.</h2>
+    <p class="sub" data-i18n="why.sub">Commercial stations push your garden's weather through an app and somebody else's server, and often on a WiFi link that drops at the bottom of the garden. This one talks Zigbee to the house and nothing else.</p>
+    <div class="features">
+      <div class="card">
+        <div class="card-head"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span><h3 data-i18n="why.solar.title">Solar, no cables</h3></div>
+        <p data-i18n="why.solar.text">One 18650 and a small 6 V panel. About four months on the battery alone, so it goes where the readings are right: in the open.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg></span><h3 data-i18n="why.zigbee.title">Zigbee, not WiFi</h3></div>
+        <p data-i18n="why.zigbee.text">Joins the mesh your other sensors already use. No passwords, no IP, no account, and it sleeps at 15 µA between reports.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19v-3M6 12V4M12 19v-7M12 8V4M18 19v-1M18 14V4M4 16h4M10 8h4M16 14h4"/></svg></span><h3 data-i18n="why.full.title">The full set</h3></div>
+        <p data-i18n="why.full.text">Wind speed, gust and direction, rain, temperature, humidity and pressure. Optional modules are found at boot: solder only what you want.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg></span><h3 data-i18n="why.print.title">Printable</h3></div>
+        <p data-i18n="why.print.text">Radiation shield, sealed box, panel bracket, pole saddles and rain gauge plate, in OpenSCAD and sized for a 220 × 220 mm bed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="measures" class="alt">
+  <div class="wrap">
+    <span class="kicker" data-i18n="measures.kicker">What it measures</span>
+    <h2 data-i18n="measures.title">Everything a forecast needs, from your own garden.</h2>
+    <p class="sub" data-i18n="measures.sub">Seven readings out of the box, four more with optional modules. Each one shows up as its own entity in Home Assistant.</p>
+    <div class="measures">
+      <div class="measure"><span class="emoji" aria-hidden="true">🌬️</span><h3 data-i18n="measures.wind.title">Wind &amp; gusts</h3><p data-i18n="measures.wind.text">5-minute average and the strongest 3 s gust, in km/h and Beaufort.</p></div>
+      <div class="measure"><span class="emoji" aria-hidden="true">🧭</span><h3 data-i18n="measures.dir.title">Direction</h3><p data-i18n="measures.dir.text">Vector average weighted by speed, 16 points.</p></div>
+      <div class="measure"><span class="emoji" aria-hidden="true">🌧️</span><h3 data-i18n="measures.rain.title">Rain</h3><p data-i18n="measures.rain.text">Every 0.28 mm tip, rain rate, today, month and year.</p></div>
+      <div class="measure"><span class="emoji" aria-hidden="true">🌡️</span><h3 data-i18n="measures.temp.title">Temperature &amp; humidity</h3><p data-i18n="measures.temp.text">SHT45 (±0.1 °C) in a ventilated radiation shield. Dew point and feels-like.</p></div>
+      <div class="measure"><span class="emoji" aria-hidden="true">📈</span><h3 data-i18n="measures.pres.title">Pressure</h3><p data-i18n="measures.pres.text">BME280, converted to sea level for your altitude.</p></div>
+      <div class="measure"><span class="tag" data-i18n="measures.optional">OPTIONAL</span><span class="emoji" aria-hidden="true">☀️</span><h3 data-i18n="measures.uv.title">UV &amp; light</h3><p data-i18n="measures.uv.text">LTR390 under a PTFE window in the shield's cap.</p></div>
+      <div class="measure"><span class="tag" data-i18n="measures.optional">OPTIONAL</span><span class="emoji" aria-hidden="true">⚡</span><h3 data-i18n="measures.lightning.title">Lightning</h3><p data-i18n="measures.lightning.text">AS3935: strikes and distance, up to about 40 km.</p></div>
+      <div class="measure"><span class="tag" data-i18n="measures.optional">OPTIONAL</span><span class="emoji" aria-hidden="true">❄️</span><h3 data-i18n="measures.frost.title">Frost &amp; soil</h3><p data-i18n="measures.frost.text">Two DS18B20 probes: grass level and 10 cm deep.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="station">
+  <div class="wrap station">
+    <div>
+      <span class="kicker" data-i18n="station.kicker">The station</span>
+      <h2 data-i18n="station.title">One pole, one rain post, an afternoon.</h2>
+      <p class="sub" style="margin-bottom:28px" data-i18n="station.sub">Everything bolts to printed saddles held by stainless hose clamps, so nothing needs drilling. These are renders of the real printed parts.</p>
+      <ul class="heights">
+        <li><b>3 m</b><div><strong data-i18n="station.wind.title">Wind arm</strong><span data-i18n="station.wind.text">At the top, clear of the roof. Point the vane's N mark north.</span></div></li>
+        <li><b>1.5 m</b><div><strong data-i18n="station.shield.title">Radiation shield</strong><span data-i18n="station.shield.text">North side of the pole, on its arm, at least 1 m from walls and paving.</span></div></li>
+        <li><b>1.3 m</b><div><strong data-i18n="station.panel.title">Solar panel</strong><span data-i18n="station.panel.text">Facing south, tilted about 60° for the winter sun. It also shades the box.</span></div></li>
+        <li><b>1.2 m</b><div><strong data-i18n="station.box.title">Electronics box</strong><span data-i18n="station.box.text">Cable glands down, so water never runs into one.</span></div></li>
+        <li><b>~1 m</b><div><strong data-i18n="station.rain.title">Rain gauge</strong><span data-i18n="station.rain.text">On its own short post a metre away, levelled with a bubble.</span></div></li>
+      </ul>
+    </div>
+    <div class="renders">
+      <figure class="render"><img src="img/station.png" width="756" height="1015" loading="lazy" alt="The whole station: 3 m pole with wind arm, shield, panel and box, rain gauge on a short post" data-i18n-attr="alt:station.img1Alt"><figcaption data-i18n="station.img1">The whole station</figcaption></figure>
+      <figure class="render"><img src="img/head.png" width="703" height="1179" loading="lazy" alt="Close-up: radiation shield on its arm, solar panel on its tilting bracket, electronics box with cable glands" data-i18n-attr="alt:station.img2Alt"><figcaption data-i18n="station.img2">Shield, panel and box</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="alt">
+  <div class="wrap">
+    <span class="kicker" data-i18n="how.kicker">How it works</span>
+    <h2 data-i18n="how.title">Asleep 94 % of the time.</h2>
+    <p class="sub" data-i18n="how.sub">The ESP32-C6 sleeps in deep sleep, wakes for each rain tip, samples the wind for 3 s every minute, and sends everything over Zigbee every 5 minutes. That is how one 18650 lasts months without sun.</p>
+    <div class="flow">
+      <div class="node"><span class="big" aria-hidden="true">🌬️</span><strong data-i18n="how.kit.title">Wind &amp; rain kit</strong><span class="s" data-i18n="how.kit.text">reeds + vane on RJ11</span></div>
+      <div class="node"><span class="big" aria-hidden="true">🌡️</span><strong data-i18n="how.sensors.title">I2C sensors</strong><span class="s">SHT45 · BME280 · LTR390 · AS3935</span></div>
+      <div class="node"><span class="big" aria-hidden="true">🔋</span><strong>XIAO ESP32-C6</strong><span class="s" data-i18n="how.xiao.text">15 µA deep sleep · end device</span></div>
+      <div class="node"><span class="big" aria-hidden="true">🔁</span><strong>Zigbee2MQTT</strong><span class="s" data-i18n="how.z2m.text">external converter</span></div>
+      <div class="node"><span class="big" aria-hidden="true">🏠</span><strong>Home Assistant</strong><span class="s" data-i18n="how.ha.text">package: rain, dew point, alerts</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="wrap">
+    <span class="kicker" data-i18n="build.kicker">Step by step</span>
+    <h2 data-i18n="build.title">Build it in nine steps.</h2>
+    <p class="sub" data-i18n="build.sub">Each step links to the file you need and to the detailed guide. Bench-test before you print or drill anything.</p>
+    <ol class="build">
+      <li>
+        <h3 data-i18n="build.s1.title">Order the parts</h3>
+        <p data-i18n="build.s1.text">About €170–200 including the pole and the filament. The wind and rain kit must be the reed-switch type with <strong>RJ11 plugs</strong>, not a set with a wireless console. Order the electronics from one shop so you can bench-test while the kit ships.</p>
+        <div class="links"><a href="#bom" data-i18n="build.link.bom">Bill of materials</a><a data-doc="01-hardware-and-wiring.md#parts" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/01-hardware-and-wiring.md#parts" data-i18n="build.link.partsList">Full parts list</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s2.title">Check the kit cables</h3>
+        <p data-i18n="build.s2.text">Batches differ. With a multimeter, find the anemometer pair (one beep per turn), the vane pair (688 Ω to 120 kΩ as it turns) and the rain pair (a beep per tip).</p>
+        <div class="links"><a data-doc="01-hardware-and-wiring.md#two-checks-before-soldering" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/01-hardware-and-wiring.md#two-checks-before-soldering" data-i18n="build.link.checks">Two checks before soldering</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s3.title">Bench test on a breadboard</h3>
+        <p data-i18n="build.s3.text">Flash the XIAO, wire the kit, the SHT45 and the BME280 on a breadboard, press RESET and watch the serial monitor: modules found, Zigbee joined, a first report. Spin the cups and tip the bucket.</p>
+        <div class="links"><a data-doc="01-hardware-and-wiring.md#wiring-diagram" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/01-hardware-and-wiring.md#wiring-diagram" data-i18n="build.link.wiring">Wiring diagram</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/firmware/weather_station/weather_station.ino">weather_station.ino</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/firmware/platformio.ini">platformio.ini</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s4.title">Print the parts</h3>
+        <p data-i18n="build.s4.text">Twelve part types, about 600 g of PETG in a light colour (not PLA: it softens in summer sun). Print one saddle and the box lid first to check your pole and your inserts.</p>
+        <div class="links"><a href="#parts" data-i18n="build.link.parts">Parts &amp; print settings</a><a href="stl/weather-station-stl.zip" data-i18n="build.link.zip">All STL files (zip)</a><a href="https://github.com/mmornati/weather-station-zigbee/tree/main/hardware/3d" data-i18n="build.link.scad">OpenSCAD sources</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s5.title">Solder the board, build the box</h3>
+        <p data-i18n="build.s5.text">XIAO, resistors, capacitors and the two RJ11 jacks on a 70 × 50 mm perfboard. Charger, cell holder and BME280 next to it, the NTC taped to the cell. Four PG7 glands and the vent plug underneath, silicone cord in the lid groove.</p>
+        <div class="links"><a data-doc="02-build-guide.md#5-solder-the-board" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/02-build-guide.md#5-solder-the-board" data-i18n="build.link.board">Board &amp; box guide</a><a data-doc="01-hardware-and-wiring.md#pins-used-by-the-firmware" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/01-hardware-and-wiring.md#pins-used-by-the-firmware" data-i18n="build.link.pins">Pin table</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s6.title">Assemble the radiation shield</h3>
+        <p data-i18n="build.s6.text">Three M5 rods through the base, then spacer, plate, spacer, plate… nine times, and the cap. The SHT45 sits in the perforated cage in the middle of the stack, out of the sun and the rain.</p>
+        <div class="links"><a href="img/shield.png" data-i18n="build.link.cutaway">Cut-away view</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/radiation_shield.scad">radiation_shield.scad</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s7.title">Pair with Zigbee2MQTT</h3>
+        <p data-i18n="build.s7.text">Copy the converter to Z2M's <code>external_converters/</code>, restart Z2M, open <em>Permit join</em> and press RESET. The station stays awake 2 minutes for the interview. Name it <code>weather_station</code>.</p>
+        <div class="links"><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/zigbee2mqtt/weather_station.mjs">weather_station.mjs</a><a data-doc="04-zigbee2mqtt-and-home-assistant.md" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/04-zigbee2mqtt-and-home-assistant.md" data-i18n="build.link.z2m">Z2M guide</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s8.title">Install it in the garden</h3>
+        <p data-i18n="build.s8.text">A 3 m pole in the open, at least 3 m from walls. Wind arm at the top, shield at 1.5 m on the north side, panel facing south, box glands down, rain gauge level on its own post.</p>
+        <div class="links"><a href="#station" data-i18n="build.link.heights">Heights &amp; renders</a><a data-doc="02-build-guide.md#8-install-it" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/02-build-guide.md#8-install-it" data-i18n="build.link.siting">Siting guide</a></div>
+      </li>
+      <li>
+        <h3 data-i18n="build.s9.title">Add the Home Assistant package</h3>
+        <p data-i18n="build.s9.text">Copy the package to <code>/config/packages/</code>, restart and set your altitude. You get rain today/month/year, rain rate, dew point, feels-like, Beaufort, and alerts for gusts, lightning, frost, low battery and a silent station.</p>
+        <div class="links"><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/homeassistant/weather_station.yaml">weather_station.yaml</a><a data-doc="04-zigbee2mqtt-and-home-assistant.md#home-assistant-package" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/04-zigbee2mqtt-and-home-assistant.md#home-assistant-package" data-i18n="build.link.entities">Entities &amp; alerts</a></div>
+      </li>
+    </ol>
+    <p class="note" data-i18n="build.note"><strong>Charger first.</strong> Connect the bq24074 to the cell and the panel and check the cell charges in the sun before you connect the XIAO. The charger refuses to charge below 0 °C on purpose: Li-ion must never charge when frozen.</p>
+  </div>
+</section>
+
+<section id="parts" class="alt">
+  <div class="wrap">
+    <span class="kicker" data-i18n="parts.kicker">3D-printed parts</span>
+    <h2 data-i18n="parts.title">Twelve parts, one 220 mm bed.</h2>
+    <p class="sub" data-i18n="parts.sub">PETG at 235–245 °C, bed 75–80 °C, 0.2 mm layers, no supports. Want another pole diameter or panel size? Change one line in the OpenSCAD file and render again.</p>
+    <div class="print-cta">
+      <a class="btn btn-primary" href="stl/weather-station-stl.zip" data-i18n="parts.zip">Download all STL files</a>
+      <a class="btn btn-ghost" href="https://github.com/mmornati/weather-station-zigbee/tree/main/hardware/3d" data-i18n="parts.sources">OpenSCAD sources</a>
+    </div>
+    <div class="parts">
+      <article class="part"><img src="img/part_shield_plate.png" alt="" loading="lazy"><div><span class="qty">× 9</span><strong data-i18n="parts.plate.name">Shield plate</strong><span class="s" data-i18n="parts.plate.text">Flat ring down, 45° skirt up. White, 2 walls, 15 %.</span><span class="links"><a href="stl/shield_plate.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/radiation_shield.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_shield_cap.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.cap.name">Shield cap</strong><span class="s" data-i18n="parts.cap.text">Closed top with a window and posts for the optional LTR390. White.</span><span class="links"><a href="stl/shield_cap.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/radiation_shield.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_shield_base.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.base.name">Shield base &amp; arm</strong><span class="s" data-i18n="parts.base.text">Holds the SHT45 cage and the rods. Flat, 4 walls, 30 %.</span><span class="links"><a href="stl/shield_base.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/radiation_shield.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_shield_spacer.png" alt="" loading="lazy"><div><span class="qty">× 30</span><strong data-i18n="parts.spacer.name">Shield spacer</strong><span class="s" data-i18n="parts.spacer.text">14 mm tubes on the M5 rods. Upright, 100 % infill.</span><span class="links"><a href="stl/shield_spacer.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/radiation_shield.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_box.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.box.name">Electronics box</strong><span class="s" data-i18n="parts.box.text">Gasket groove, 4 glands + vent, perfboard posts. On its back, 4 walls, 30 %.</span><span class="links"><a href="stl/box.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/electronics_box.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_box_lid.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.lid.name">Box lid</strong><span class="s" data-i18n="parts.lid.text">With a drip edge on top. Flat, 4 walls, 30 %.</span><span class="links"><a href="stl/box_lid.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/electronics_box.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_panel_frame.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.frame.name">Panel frame</strong><span class="s" data-i18n="parts.frame.text">Snap-in pocket for a 136 × 110 mm panel. Flat, 4 walls, 30 %.</span><span class="links"><a href="stl/panel_frame.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/panel_bracket.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_panel_cheeks.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.cheeks.name">Panel cheeks</strong><span class="s" data-i18n="parts.cheeks.text">Tilt from 45° to 70°. Base plate down, 4 walls, 40 %.</span><span class="links"><a href="stl/panel_cheeks.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/panel_bracket.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_pole_saddle.png" alt="" loading="lazy"><div><span class="qty">× 4</span><strong data-i18n="parts.saddle.name">Pole saddle</strong><span class="s" data-i18n="parts.saddle.text">Two hose clamps, four M4 inserts. Flat face down, 6 walls, 40 %.</span><span class="links"><a href="stl/pole_saddle.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/pole_saddle.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_angle_bracket.png" alt="" loading="lazy"><div><span class="qty">× 2</span><strong data-i18n="parts.angle.name">Angle bracket</strong><span class="s" data-i18n="parts.angle.text">A shelf for the shield arm and the rain plate. On its side, 6 walls, 50 %.</span><span class="links"><a href="stl/angle_bracket.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/angle_bracket.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_rain_plate_top.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.rainTop.name">Rain plate, top</strong><span class="s" data-i18n="parts.rainTop.text">Slots for the gauge, pocket for a bubble level. Flat, 4 walls, 40 %.</span><span class="links"><a href="stl/rain_plate_top.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/rain_gauge_plate.scad">.scad</a></span></div></article>
+      <article class="part"><img src="img/part_rain_plate_base.png" alt="" loading="lazy"><div><span class="qty">× 1</span><strong data-i18n="parts.rainBase.name">Rain plate, base</strong><span class="s" data-i18n="parts.rainBase.text">Three spring-loaded M5 screws to level it. Flat, 4 walls, 40 %.</span><span class="links"><a href="stl/rain_plate_base.stl">STL</a><a href="https://github.com/mmornati/weather-station-zigbee/blob/main/hardware/3d/rain_gauge_plate.scad">.scad</a></span></div></article>
+    </div>
+  </div>
+</section>
+
+<section id="flash">
+  <div class="wrap">
+    <span class="kicker" data-i18n="flash.kicker">Flash</span>
+    <h2 data-i18n="flash.title">No toolchain. Just a USB cable.</h2>
+    <p class="sub" data-i18n="flash.sub">Plug the XIAO ESP32-C6 into your computer and flash the latest firmware straight from this page. Prefer to build it yourself? It's a single <code>pio run</code>.</p>
+    <div class="flash-grid">
+      <div class="flash-card">
+        <h3 data-i18n="flash.card.title">Install the firmware</h3>
+        <p data-i18n="flash.card.text">Works in Chrome and Edge on desktop (Web Serial). On the first install, choose <strong>Erase device</strong> so the Zigbee stack starts clean. Later updates keep the rain total if you don't erase.</p>
+        <esp-web-install-button manifest="firmware/manifest.json">
+          <button slot="activate" class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span data-i18n="flash.card.button">Connect &amp; install</span>
+          </button>
+          <span slot="unsupported" class="unsupported" data-i18n="flash.card.unsupported">Your browser doesn't support Web Serial. Open this page in Chrome or Edge on a computer.</span>
+          <span slot="not-allowed" class="unsupported" data-i18n="flash.card.notAllowed">Web Serial needs a secure (https) page.</span>
+        </esp-web-install-button>
+        <div class="version">firmware · __FIRMWARE_VERSION__ · XIAO ESP32-C6 · Zigbee end device</div>
+      </div>
+      <ol class="steps">
+        <li data-i18n="flash.step1"><strong>Connect the board</strong>USB-C to your computer. Unplug the battery while you flash.</li>
+        <li data-i18n="flash.step2"><strong>Flash it</strong>Click <em>Connect &amp; install</em>, pick the serial port and accept the erase on the first install. If no port shows up, hold BOOT while you plug the cable in.</li>
+        <li data-i18n="flash.step3"><strong>Add the converter</strong>Drop <code>weather_station.mjs</code> into Zigbee2MQTT's <code>external_converters/</code> folder and restart it.</li>
+        <li data-i18n="flash.step4"><strong>Pair</strong>Open <em>Permit join</em>, then press RESET. The LED blinks while it searches; once joined it stays awake 2 minutes for the interview, then sleeps.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="ha" class="alt">
+  <div class="wrap garage">
+    <div>
+      <span class="kicker">Home Assistant</span>
+      <h2 data-i18n="ha.title">More than numbers on a dashboard.</h2>
+      <p class="sub" style="margin-bottom:28px" data-i18n="ha.sub">The ready-made package turns raw readings into the things you actually use, and warns you when the weather, or the station, needs attention.</p>
+      <ul class="checks">
+        <li><span class="ic" aria-hidden="true">🌧️</span><div><strong data-i18n="ha.rain.title">Rain totals</strong><span data-i18n="ha.rain.text">Today, this month, this year, last 24 h and the rate in mm/h.</span></div></li>
+        <li><span class="ic" aria-hidden="true">💨</span><div><strong data-i18n="ha.gust.title">Gust alert</strong><span data-i18n="ha.gust.text">Time to bring the parasol in. You set the threshold.</span></div></li>
+        <li><span class="ic" aria-hidden="true">❄️</span><div><strong data-i18n="ha.frost.title">Frost warning</strong><span data-i18n="ha.frost.text">From the grass-level probe, or from the air temperature without it.</span></div></li>
+        <li><span class="ic" aria-hidden="true">📴</span><div><strong data-i18n="ha.silent.title">Station silent</strong><span data-i18n="ha.silent.text">No report for 30 minutes, or the battery under 20 %.</span></div></li>
+      </ul>
+    </div>
+    <div>
+      <div class="notif"><div class="notif-head"><b>Home Assistant</b><span data-i18n="ha.notif.now">now</span></div><strong data-i18n="ha.notif1.title">Strong gust</strong><p data-i18n="ha.notif1">Gust of 62 km/h from the WSW.</p></div>
+      <div class="notif"><div class="notif-head"><b>Home Assistant</b><span>05:40</span></div><strong data-i18n="ha.notif2.title">Frost</strong><p data-i18n="ha.notif2">-1.8 °C at grass level. Cover the seedlings.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="bom">
+  <div class="wrap">
+    <span class="kicker" data-i18n="bom.kicker">Bill of materials</span>
+    <h2 data-i18n="bom.title">About €170–200, pole and filament included.</h2>
+    <p class="sub" data-i18n="bom.sub">Rough 2026 prices. AliExpress is cheapest but slow; order the electronics from one faster shop to start bench-testing early.</p>
+    <div class="bom-wrap">
+      <table class="bom">
+        <thead><tr><th data-i18n="bom.part">Part</th><th data-i18n="bom.why">Why</th><th data-i18n="bom.price">Approx.</th></tr></thead>
+        <tbody>
+          <tr><td>Seeed XIAO ESP32-C6 + U.FL antenna</td><td data-i18n="bom.xiao">Zigbee radio + MCU, 15 µA in deep sleep</td><td>€9</td></tr>
+          <tr><td data-i18n="bom.kit.name">Misol / Fine Offset weather meter kit (SparkFun SEN-15901)</td><td data-i18n="bom.kit">Anemometer, vane, rain gauge, with RJ11 cables</td><td>€35–45</td></tr>
+          <tr><td>SHT45 + BME280</td><td data-i18n="bom.sensors">Temperature, humidity, pressure</td><td>€19</td></tr>
+          <tr><td data-i18n="bom.power.name">bq24074 charger + NTC, 6 V 1–2 W panel, NCR18650B + holder</td><td data-i18n="bom.power">Solar power that stops charging below 0 °C</td><td>€34–38</td></tr>
+          <tr><td data-i18n="bom.small.name">Perfboard, 2 × RJ11 jacks, resistors, capacitors, wire</td><td data-i18n="bom.small">The board in the box</td><td>€13</td></tr>
+          <tr><td data-i18n="bom.seal.name">4 × PG7 glands, M12 vent plug, silicone cord</td><td data-i18n="bom.seal">A sealed box that breathes</td><td>€13</td></tr>
+          <tr><td data-i18n="bom.mount.name">Pole Ø 32–40 mm, hose clamps, M4/M5 hardware, inserts</td><td data-i18n="bom.mount">Mounting</td><td>€29–39</td></tr>
+          <tr><td data-i18n="bom.petg.name">PETG, about 600 g</td><td data-i18n="bom.petg">All printed parts</td><td>€20</td></tr>
+          <tr><td data-i18n="bom.opt.name"><em>Optional:</em> LTR390, 2 × DS18B20, AS3935</td><td data-i18n="bom.opt">UV and light, frost and soil, lightning</td><td>€30–45</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="alt">
+  <div class="wrap">
+    <span class="kicker">FAQ</span>
+    <h2 data-i18n="faq.title">Good questions.</h2>
+    <div class="faq">
+      <details open>
+        <summary data-i18n="faq.zigbee.q">Why Zigbee and not WiFi / ESPHome?</summary>
+        <p data-i18n="faq.zigbee.a">A WiFi report costs several times the energy of a Zigbee one, and garden WiFi is often the weakest link. As a sleepy Zigbee end device the station reports through the nearest router, needs no credentials and lives on a small cell and a palm-sized panel. The trade-off is firmware updates over USB and a small Z2M converter.</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.winter.q">Will it survive the winter?</summary>
+        <p data-i18n="faq.winter.a">The 18650 alone covers about four months with no sun at all, and a 1 W panel already covers December in northern France. The charger stops charging below 0 °C to protect the cell; the cell carries the station through cold spells and charges again once it warms up.</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.accuracy.q">How accurate is it?</summary>
+        <p data-i18n="faq.accuracy.a">The SHT45 is rated ±0.1 °C and ±1 %RH; in practice the radiation shield and its siting matter more than the sensor. Wind is sampled 3 s every minute, which gives a good 5-minute picture but can miss a short gust between two windows. The rain gauge's 0.28 mm per tip is nominal: compare with a manual gauge and adjust it if needed.</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.optional.q">Do I need all the optional modules?</summary>
+        <p data-i18n="faq.optional.a">No. The firmware detects what is connected at power-on and only exposes those readings. You can add a module later: press RESET, then run <em>Interview</em> and <em>Reconfigure</em> in Zigbee2MQTT during the 2 awake minutes.</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.printer.q">Which printer do I need?</summary>
+        <p data-i18n="faq.printer.a">Any printer with a 220 × 220 mm bed that prints PETG. The parts were designed on an Ender 3 V2 Neo with its stock PTFE-lined hotend. ASA works too if your hotend handles about 250 °C. Avoid PLA outdoors.</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.tested.q">Is it tested?</summary>
+        <p data-i18n="faq.tested.a">Every commit runs host unit tests (vane decoding, wind average, gust and direction, rain bounce guard, the clock across deep sleep), builds the firmware with PlatformIO and Arduino CLI, tests the converter against <code>zigbee-herdsman-converters</code>, validates the Home Assistant package and renders every 3D part.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section id="docs">
+  <div class="wrap">
+    <span class="kicker" data-i18n="docs.kicker">Documentation</span>
+    <h2 data-i18n="docs.title">Everything, in detail.</h2>
+    <p class="sub" data-i18n="docs.sub">Wiring diagrams, the power budget, a bench-first build, flashing, pairing and the Home Assistant package.</p>
+    <div class="docs">
+      <a class="doc" data-doc="01-hardware-and-wiring.md" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/01-hardware-and-wiring.md"><span class="n">01</span><strong data-i18n="docs.d1.title">Hardware &amp; wiring</strong><span data-i18n="docs.d1.text">Parts, power budget, diagram, pins</span></a>
+      <a class="doc" data-doc="02-build-guide.md" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/02-build-guide.md"><span class="n">02</span><strong data-i18n="docs.d2.title">Step-by-step build</strong><span data-i18n="docs.d2.text">Bench test, printing, box, shield, siting</span></a>
+      <a class="doc" data-doc="03-firmware.md" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/03-firmware.md"><span class="n">03</span><strong>Firmware</strong><span data-i18n="docs.d3.text">Flashing, sleep cycle, endpoints, settings</span></a>
+      <a class="doc" data-doc="04-zigbee2mqtt-and-home-assistant.md" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/04-zigbee2mqtt-and-home-assistant.md"><span class="n">04</span><strong>Z2M &amp; Home Assistant</strong><span data-i18n="docs.d4.text">Converter, entities, alerts</span></a>
+      <a class="doc" data-doc="05-troubleshooting.md" href="https://github.com/mmornati/weather-station-zigbee/blob/main/docs/05-troubleshooting.md"><span class="n">05</span><strong data-i18n="docs.d5.title">Troubleshooting</strong><span data-i18n="docs.d5.text">Symptoms and fixes</span></a>
+      <a class="doc" href="https://github.com/mmornati/weather-station-zigbee/releases"><span class="n">↓</span><strong data-i18n="docs.releases.title">Releases</strong><span data-i18n="docs.releases.text">Firmware, STL zip &amp; checksums</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2 data-i18n="final.title">Stop trusting the airport's weather.</h2>
+    <p class="sub" style="margin:0 auto 32px" data-i18n="final.sub">Your garden, your readings, your Home Assistant. Nothing leaves your house.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#build" data-i18n="final.build">Start building</a>
+      <a class="btn btn-ghost" href="https://github.com/mmornati/weather-station-zigbee" data-i18n="final.star">Star on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Weather Station Zigbee · <span data-i18n="footer.license">MIT License</span> · <span data-i18n="footer.by">by</span> <a href="https://github.com/mmornati">@mmornati</a></span>
+    <span data-i18n="footer.disclaimer">Not affiliated with Seeed Studio, Espressif, Misol, Fine Offset, Zigbee2MQTT or Home Assistant.</span>
+  </div>
+</footer>
+
+<script type="module">
+  import {translations, SUPPORTED} from './i18n.js';
+
+  const REPO = 'https://github.com/mmornati/weather-station-zigbee/blob/main/';
+  const english = {};
+  const englishAttrs = [];
+  const metaDescription = document.querySelector('meta[name="description"]');
+  english['meta.description'] = metaDescription.content;
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    english[el.dataset.i18n] ??= el.innerHTML;
+  }
+  for (const el of document.querySelectorAll('[data-i18n-attr]')) {
+    const [attr, key] = el.dataset.i18nAttr.split(':');
+    english[key] ??= el.getAttribute(attr);
+    englishAttrs.push({el, attr, key});
+  }
+  english['js.asleep'] = 'Asleep';
+  english['js.sending'] = 'Reporting';
+
+  let lang = 'en';
+  const t = (key) => (lang !== 'en' && translations[lang][key]) || english[key];
+
+  function pickInitialLanguage() {
+    const fromUrl = new URLSearchParams(location.search).get('lang');
+    if (SUPPORTED.includes(fromUrl)) return fromUrl;
+    try {
+      const saved = localStorage.getItem('lang');
+      if (SUPPORTED.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    for (const l of navigator.languages || [navigator.language]) {
+      const short = (l || '').slice(0, 2).toLowerCase();
+      if (SUPPORTED.includes(short)) return short;
+    }
+    return 'en';
+  }
+
+  function applyLanguage(next, {remember = false} = {}) {
+    lang = next;
+    document.documentElement.lang = lang;
+    for (const el of document.querySelectorAll('[data-i18n]')) el.innerHTML = t(el.dataset.i18n);
+    for (const {el, attr, key} of englishAttrs) el.setAttribute(attr, t(key));
+    metaDescription.content = t('meta.description');
+    stateText.textContent = t(sending ? 'js.sending' : 'js.asleep');
+    for (const a of document.querySelectorAll('[data-doc]')) {
+      // Section anchors are English headings: translated docs open at the top.
+      a.href = REPO + 'docs/' + (lang === 'en' ? a.dataset.doc : lang + '/' + a.dataset.doc.split('#')[0]);
+    }
+    for (const b of document.querySelectorAll('.lang button')) {
+      b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
+    }
+    if (remember) {
+      try { localStorage.setItem('lang', lang); } catch (e) { /* storage unavailable */ }
+      const url = new URL(location.href);
+      if (lang === 'en') url.searchParams.delete('lang'); else url.searchParams.set('lang', lang);
+      history.replaceState(null, '', url);
+    }
+  }
+
+  for (const b of document.querySelectorAll('.lang button')) {
+    b.addEventListener('click', () => applyLanguage(b.dataset.lang, {remember: true}));
+  }
+
+  /* ---------- Live demo: a gusty autumn afternoon ---------- */
+  const demo = document.getElementById('demo');
+  const stateText = document.getElementById('state-text');
+  const needle = document.getElementById('needle');
+  const $ = (id) => document.getElementById(id);
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let sending = false;
+  const s = {dir: 248, wind: 12, gust: 21, temp: 11.4, hum: 87, pres: 1004.2, rain: 412.6, today: 2.8};
+
+  function render() {
+    needle.style.transform = `rotate(${s.dir}deg)`;
+    $('v-wind').textContent = $('p-wind').textContent = Math.round(s.wind);
+    $('v-gust').textContent = $('p-gust').textContent = Math.round(s.gust);
+    $('v-temp').textContent = $('p-temp').textContent = s.temp.toFixed(1);
+    $('v-rain').textContent = s.today.toFixed(1);
+    $('p-dir').textContent = Math.round(s.dir);
+    $('p-hum').textContent = Math.round(s.hum);
+    $('p-pres').textContent = s.pres.toFixed(1);
+    $('p-rain').textContent = s.rain.toFixed(1);
+  }
+
+  function step() {
+    const r = (a) => (Math.random() * 2 - 1) * a;
+    s.dir = (s.dir + r(25) + 360) % 360;
+    s.wind = Math.max(2, Math.min(35, s.wind + r(4)));
+    s.gust = s.wind * (1.4 + Math.random() * 0.5);
+    s.temp += r(0.2);
+    s.hum = Math.max(60, Math.min(99, s.hum + r(1.5)));
+    s.pres += r(0.3);
+    if (Math.random() < 0.35) { s.rain += 0.2794; s.today += 0.2794; }
+    sending = true;
+    demo.classList.add('sending');
+    stateText.textContent = t('js.sending');
+    render();
+    setTimeout(() => {
+      sending = false;
+      demo.classList.remove('sending');
+      stateText.textContent = t('js.asleep');
+    }, 1200);
+  }
+
+  render();
+  if (!reduced) setInterval(step, 4000);
+
+  applyLanguage(pickInitialLanguage());
+</script>
+</body>
+</html>

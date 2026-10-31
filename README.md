@@ -6,13 +6,18 @@
 Seeed XIAO ESP32-C6 + Misol weather meter kit + 3D-printed shield · Zigbee2MQTT & Home Assistant ready.
 
 [![CI](https://github.com/mmornati/weather-station-zigbee/actions/workflows/ci.yml/badge.svg)](https://github.com/mmornati/weather-station-zigbee/actions/workflows/ci.yml)
+[![Pages](https://github.com/mmornati/weather-station-zigbee/actions/workflows/pages.yml/badge.svg)](https://mmornati.github.io/weather-station-zigbee/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 <br>
 [![ESP32-C6](https://img.shields.io/badge/ESP32--C6-Zigbee%20end%20device-E7352C?logo=espressif&logoColor=white)](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/)
 [![Zigbee2MQTT](https://img.shields.io/badge/Zigbee2MQTT-2.x-FFC135?logo=zigbee&logoColor=black)](https://www.zigbee2mqtt.io/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-ready-18BCF2?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 
-[**📖 Build guide**](docs/01-hardware-and-wiring.md) · [**🖨️ 3D parts**](hardware/3d) · [**📦 Releases**](https://github.com/mmornati/weather-station-zigbee/releases)
+[**🌐 Website**](https://mmornati.github.io/weather-station-zigbee/) · [**⚡ Flash in your browser**](https://mmornati.github.io/weather-station-zigbee/#flash) · [**📖 Build guide**](docs/02-build-guide.md) · [**🖨️ 3D parts**](hardware/3d) · [**📦 Releases**](https://github.com/mmornati/weather-station-zigbee/releases)
+
+🌐 **English** · [Français](README.fr.md) · [Italiano](README.it.md)
+
+<a href="https://mmornati.github.io/weather-station-zigbee/"><img src="site/img/station.png" alt="Render of the finished station: 3 m pole with the wind arm, radiation shield, solar panel and box, and the rain gauge on its own post" height="420"></a> <a href="https://mmornati.github.io/weather-station-zigbee/#parts"><img src="site/img/head.png" alt="Close-up render of the radiation shield, the solar panel and the electronics box" height="420"></a>
 
 </div>
 
@@ -26,14 +31,14 @@ Seeed XIAO ESP32-C6 + Misol weather meter kit + 3D-printed shield · Zigbee2MQTT
 | 📡 **Zigbee, not WiFi** | Joins the mesh your other sensors use. No passwords, no cloud, and it keeps working when the garden WiFi doesn't |
 | 🌬️ **The full set** | Wind speed, gusts and direction, rain, temperature, humidity, pressure |
 | ➕ **Optional modules** | UV index and light, lightning distance, grass-level frost probe, soil temperature. Detected at boot: solder only what you want |
-| 🖨️ **Printable** | Radiation shield, sealed box, panel bracket, pole saddles and rain gauge plate in OpenSCAD, sized for a 220 × 220 mm bed |
+| 🖨️ **Printable** | Radiation shield, sealed box, panel bracket, pole saddles, angle brackets and rain gauge plate in OpenSCAD, sized for a 220 × 220 mm bed |
 | 🏠 **HA package** | Rain today/month/year, rain rate, dew point, feels-like, sea-level pressure, Beaufort, frost, gust, lightning and silent-station alerts |
 | ✅ **Tested on every commit** | Host unit tests, two firmware builds, converter tests against Z2M's own library, Home Assistant's config checker, every STL rendered |
 
 ## 🚀 Quick start
 
 1. **Wire it.** Kit on `D1` (rain), `D3` (anemometer), `D2` (vane), sensors on I2C `D7`/`D8`, 18650 on the XIAO's BAT pads. [Wiring guide →](docs/01-hardware-and-wiring.md)
-2. **Flash it.**
+2. **Flash it** from the [website](https://mmornati.github.io/weather-station-zigbee/#flash) (Chrome or Edge), or:
 
    ```bash
    cd firmware
@@ -56,7 +61,7 @@ flowchart LR
 
 ## 🧰 Bill of materials
 
-About **€100–120** plus ~600 g of PETG. Full list with notes in the [hardware guide](docs/01-hardware-and-wiring.md#parts).
+About **€170–200** including the pole and ~600 g of PETG. Full list with notes in the [hardware guide](docs/01-hardware-and-wiring.md#parts).
 
 | Part | Role |
 |---|---|
@@ -86,6 +91,7 @@ About **€100–120** plus ~600 g of PETG. Full list with notes in the [hardwar
 | **Converter tests** | Z2M's own `zigbee-herdsman-converters` resolves the device and decodes every endpoint; endpoint numbers and model match the firmware |
 | **Home Assistant check** | The package passes Home Assistant's own `check_config` |
 | **3D parts** | Every OpenSCAD part renders to STL without warnings |
+| **Website** | Every string on the website exists in English, French and Italian; no broken local links in the docs or the site |
 
 Tag a version (`git tag v1.0.0 && git push --tags`) and the [release workflow](.github/workflows/release.yml) publishes the firmware, the converter, the HA package and a zip of STL files, with checksums.
 
@@ -103,7 +109,8 @@ zigbee2mqtt/
 homeassistant/
   weather_station.yaml           HA package
   ci/                            Home Assistant config check
-hardware/3d/                     OpenSCAD parts + build_stl.sh
+hardware/3d/                     OpenSCAD parts, build_stl.sh, render_images.sh
+site/                            website (GitHub Pages) with the browser flasher
 docs/                            build guides
 ```
 

@@ -10,6 +10,7 @@ mkdir -p "$out"
 
 parts=(
   "pole_saddle.scad:-:pole_saddle"
+  "angle_bracket.scad:-:angle_bracket"
   "radiation_shield.scad:plate:shield_plate"
   "radiation_shield.scad:cap:shield_cap"
   "radiation_shield.scad:base:shield_base"

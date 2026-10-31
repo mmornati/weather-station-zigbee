@@ -5,3 +5,4 @@ site/firmware/
 hardware/3d/stl/
 .claude/
 firmware/local.ini
+site/stl/

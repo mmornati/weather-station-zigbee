@@ -1,0 +1,82 @@
+name: Pages
+
+# Builds the firmware for the browser flasher, renders the STL files for download and
+# publishes site/ to GitHub Pages.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "firmware/**"
+      - "hardware/3d/**"
+      - ".github/workflows/pages.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+      - name: Install PlatformIO and OpenSCAD
+        run: |
+          pip install platformio
+          sudo apt-get update && sudo apt-get install -y openscad
+      - name: Build firmware
+        run: pio run -d firmware -e xiao_esp32c6
+      - name: Add firmware and ESP Web Tools manifest to the site
+        run: |
+          version="$(git describe --tags --always)"
+          mkdir -p site/firmware
+          cp firmware/.pio/build/xiao_esp32c6/firmware.factory.bin site/firmware/weather-station-zigbee.factory.bin
+          cat > site/firmware/manifest.json <<EOF
+          {
+            "name": "Weather Station Zigbee",
+            "version": "${version}",
+            "new_install_prompt_erase": true,
+            "builds": [
+              {
+                "chipFamily": "ESP32-C6",
+                "parts": [{ "path": "weather-station-zigbee.factory.bin", "offset": 0 }]
+              }
+            ]
+          }
+          EOF
+          sed -i "s/__FIRMWARE_VERSION__/${version}/g" site/index.html
+      - name: Add the STL files to the site
+        run: |
+          hardware/3d/build_stl.sh site/stl
+          (cd site/stl && zip -q weather-station-stl.zip *.stl)
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

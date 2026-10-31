@@ -1,5 +1,7 @@
 # 04 · Zigbee2MQTT & Home Assistant
 
+🌐 **English** · [Français](fr/04-zigbee2mqtt-and-home-assistant.md) · [Italiano](it/04-zigbee2mqtt-and-home-assistant.md)
+
 ## Zigbee2MQTT
 
 1. Copy [`zigbee2mqtt/weather_station.mjs`](../zigbee2mqtt/weather_station.mjs) to `<z2m data>/external_converters/` and restart Zigbee2MQTT.
